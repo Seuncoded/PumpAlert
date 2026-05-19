@@ -20,10 +20,14 @@ function buildTriggerReason(entry: { buys: number; sells: number; totalSolVolume
   return `${entry.buys} buys in ${timeStr} | ${buyPressure}% buy pressure | ${entry.totalSolVolume.toFixed(2)} SOL vol`
 }
 
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null
+
 function subscribe(socket: WebSocket, method: string, keys?: string[]): void {
   const payload: Record<string, unknown> = { method }
   if (keys) payload.keys = keys
-  socket.send(JSON.stringify(payload))
+  const msg = JSON.stringify(payload)
+  console.log('Sending subscription:', msg)
+  socket.send(msg)
 }
 
 function connect(): void {
@@ -41,9 +45,15 @@ function connect(): void {
         subscribe(ws!, 'subscribeTokenTrade', [mint])
       }
     }
+
+    if (heartbeatTimer) clearInterval(heartbeatTimer)
+    heartbeatTimer = setInterval(() => {
+      console.log('💓 WS alive, waiting for events...')
+    }, 30_000)
   })
 
   ws.on('message', (data: WebSocket.RawData) => {
+    console.log('RAW:', data.toString().slice(0, 200))
     let parsed: Record<string, unknown>
     try {
       parsed = JSON.parse(data.toString())
@@ -86,6 +96,7 @@ function connect(): void {
   })
 
   ws.on('close', () => {
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null }
     if (intentionalClose) return
     scheduleReconnect()
   })
