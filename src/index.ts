@@ -4,7 +4,7 @@ import { startWatcher, stopWatcher } from './watcher'
 import { logInfo } from './logger'
 
 function validateEnv(): void {
-  const required = ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID']
+  const required = ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID', 'PUMPPORTAL_API_KEY']
   const missing = required.filter((key) => !process.env[key])
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`)

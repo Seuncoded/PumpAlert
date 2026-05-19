@@ -4,7 +4,7 @@ import { sendMomentumAlert } from './bot'
 import { logConnect, logReconnect, logPass, logDrop, logAlert, logInfo } from './logger'
 import type { TokenMintEvent, TradeEvent } from './types'
 
-const WS_URL = 'wss://pumpportal.fun/api/data'
+const WS_URL = `wss://pumpportal.fun/api/data?api-key=${process.env.PUMPPORTAL_API_KEY}`
 
 let ws: WebSocket | null = null
 let reconnectAttempt = 0
