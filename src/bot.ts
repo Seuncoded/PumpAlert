@@ -39,35 +39,52 @@ async function fetchImageUrl(uri: string): Promise<string | null> {
   }
 }
 
-export async function sendMomentumAlert(watched: WatchedToken, triggerReason: string): Promise<void> {
+function buildTriggerLine(watched: WatchedToken): string {
+  const { buys, sells, totalSolVolume, firstBuyAt } = watched
+  const totalTrades = buys + sells
+  const pressure = totalTrades > 0 ? Math.round((buys / totalTrades) * 100) : 0
+  const sellStr = `${sells} ${sells === 1 ? 'sell' : 'sells'}`
+  const buyStr = `${buys} ${buys === 1 ? 'buy' : 'buys'}`
+
+  if (buys >= 10 && firstBuyAt !== null) {
+    const elapsed = Math.round((Date.now() - firstBuyAt) / 1000)
+    const mins = Math.floor(elapsed / 60)
+    const secs = elapsed % 60
+    const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+    return `⚡ ${buys} buys in ${timeStr} | ${sellStr} | ${pressure}% pressure`
+  }
+
+  if (pressure >= 70) {
+    return `⚡ ${pressure}% pressure | ${buyStr} | ${sellStr}`
+  }
+
+  return `⚡ ${totalSolVolume.toFixed(2)} SOL vol | ${buyStr} | ${sellStr}`
+}
+
+function usd(sol: number, price: number): string {
+  return (sol * price).toLocaleString('en-US', { maximumFractionDigits: 0 })
+}
+
+export async function sendMomentumAlert(watched: WatchedToken): Promise<void> {
   const chatId = process.env.TELEGRAM_CHAT_ID!
   const { token } = watched
 
   const price = getSolPrice()
-  const marketCapUsd = price > 0
-    ? ` (~$${(token.marketCapSol * price).toLocaleString('en-US', { maximumFractionDigits: 0 })})`
-    : ''
-
-  const shortUri = token.uri ? token.uri.slice(0, 30) + '...' : null
-  const metaLine = shortUri
-    ? `\n📄 <a href="${token.uri}">Metadata</a> <code>${shortUri}</code>\n`
-    : '\n'
+  const mcapUsd = price > 0 ? ` ($${usd(token.marketCapSol, price)})` : ''
+  const volUsd  = price > 0 ? ` ($${usd(watched.totalSolVolume, price)})` : ''
 
   const text = [
-    `🔥 <b>Momentum Alert — $${token.symbol}</b>`,
+    `<b>$${token.symbol} — ${token.name}</b>`,
+    `<code>${token.mint}</code>`,
     ``,
-    `<b>Name:</b> ${token.name}`,
-    `<b>Mint:</b> <code>${token.mint}</code>`,
-    `<b>Market Cap:</b> ${token.marketCapSol.toFixed(2)} SOL${marketCapUsd}`,
+    buildTriggerLine(watched),
     ``,
-    `<b>Trigger:</b> ${triggerReason}`,
-    `<b>Buys:</b> ${watched.buys}  |  <b>Sells:</b> ${watched.sells}`,
-    `<b>Vol:</b> ${watched.totalSolVolume.toFixed(3)} SOL`,
-    metaLine,
-    `<a href="https://pump.fun/${token.mint}">🚀 View on pump.fun</a>`,
+    `💵 Vol: ${volUsd ? volUsd.trim() + ' ' : ''}(${watched.totalSolVolume.toFixed(2)} SOL)`,
+    `💰 MCap: ${mcapUsd ? mcapUsd.trim() + ' ' : ''}(${token.marketCapSol.toFixed(2)} SOL)`,
+    ``,
+    `<a href="https://pump.fun/${token.mint}">🚀 pump.fun</a>  |  <a href="https://dexscreener.com/solana/${token.mint}">DexScreener</a>  |  <a href="https://rugcheck.xyz/tokens/${token.mint}">RugCheck</a>`,
   ].join('\n')
 
-  // Telegram caption limit is 1024 chars
   const caption = text.length <= 1024 ? text : text.slice(0, 1021) + '...'
 
   let imageUrl: string | null = null
