@@ -61,7 +61,9 @@ function connect(): void {
       return
     }
 
-    if (parsed.txType !== undefined) {
+    console.log('MSG KEYS:', Object.keys(parsed).join(', '))
+
+    if (parsed.mint && parsed.txType) {
       // Trade event
       const trade = parsed as unknown as TradeEvent
       const triggered = handleTrade(trade)
@@ -69,10 +71,10 @@ function connect(): void {
         const reason = buildTriggerReason(triggered)
         sendMomentumAlert(triggered, reason).catch(() => {})
         logAlert(triggered.token.name, triggered.token.mint)
-        subscribe(ws!, 'unsubscribeTokenTrade', [trade.mint])
+        subscribe(ws!, 'unsubscribeTokenTrade', [trade.mint as string])
       }
-    } else if (parsed.mint !== undefined) {
-      // New token event
+    } else if (parsed.name && parsed.mint && parsed.symbol) {
+      // New token mint event
       const token = parsed as unknown as TokenMintEvent
       const name = token.name ?? 'Unknown'
       const descOk = typeof token.description === 'string' && token.description.length > 20
@@ -92,6 +94,8 @@ function connect(): void {
       const slot = watchlistSize()
       logPass(name, token.mint, slot)
       subscribe(ws!, 'subscribeTokenTrade', [token.mint])
+    } else {
+      console.log('UNKNOWN MSG:', JSON.stringify(parsed).slice(0, 150))
     }
   })
 
