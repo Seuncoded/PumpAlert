@@ -2,9 +2,11 @@ import type { TokenMintEvent, TradeEvent, WatchedToken } from './types'
 
 const WATCHLIST_CAP = 150
 const WINDOW_MS = 10 * 60 * 1000
+const BUY_WINDOW_MS = 5 * 60 * 1000
 
 const MIN_BUYS = 10
 const MIN_BUY_PRESSURE = 0.70
+const MIN_BUY_PRESSURE_MIN_TRADES = 5
 const MIN_SOL_VOL = 3
 
 const watchlist = new Map<string, WatchedToken>()
@@ -17,6 +19,7 @@ export function addToWatchlist(token: TokenMintEvent): boolean {
   watchlist.set(token.mint, {
     token,
     addedAt: Date.now(),
+    firstBuyAt: null,
     buys: 0,
     sells: 0,
     totalSolVolume: 0,
@@ -30,6 +33,7 @@ export function handleTrade(trade: TradeEvent): WatchedToken | null {
   if (!entry || entry.alerted) return null
 
   if (trade.txType === 'buy') {
+    if (entry.buys === 0) entry.firstBuyAt = Date.now()
     entry.buys++
   } else {
     entry.sells++
@@ -38,10 +42,11 @@ export function handleTrade(trade: TradeEvent): WatchedToken | null {
 
   const totalTrades = entry.buys + entry.sells
   const buyPressure = totalTrades > 0 ? entry.buys / totalTrades : 0
+  const buyWindowOk = entry.firstBuyAt !== null && (Date.now() - entry.firstBuyAt) <= BUY_WINDOW_MS
 
   const triggered =
-    entry.buys >= MIN_BUYS ||
-    buyPressure >= MIN_BUY_PRESSURE ||
+    (entry.buys >= MIN_BUYS && buyWindowOk) ||
+    (buyPressure >= MIN_BUY_PRESSURE && totalTrades >= MIN_BUY_PRESSURE_MIN_TRADES) ||
     entry.totalSolVolume >= MIN_SOL_VOL
 
   if (triggered) {

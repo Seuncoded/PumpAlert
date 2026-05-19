@@ -31,6 +31,7 @@ export interface TradeEvent {
 export interface WatchedToken {
   token: TokenMintEvent
   addedAt: number
+  firstBuyAt: number | null
   buys: number
   sells: number
   totalSolVolume: number

@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { initBot, sendStartupMessage } from './bot'
 import { startWatcher, stopWatcher } from './watcher'
+import { initPriceService } from './priceService'
 import { logInfo } from './logger'
 
 function validateEnv(): void {
@@ -15,6 +16,7 @@ async function main(): Promise<void> {
   validateEnv()
   initBot()
   await sendStartupMessage()
+  await initPriceService()
   startWatcher()
 
   process.on('SIGINT', shutdown)

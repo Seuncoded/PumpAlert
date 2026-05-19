@@ -1,5 +1,6 @@
 import { Bot } from 'grammy'
 import type { WatchedToken } from './types'
+import { getSolPrice } from './priceService'
 
 let bot: Bot
 
@@ -18,6 +19,11 @@ export async function sendMomentumAlert(watched: WatchedToken, triggerReason: st
   const chatId = process.env.TELEGRAM_CHAT_ID!
   const { token } = watched
 
+  const price = getSolPrice()
+  const marketCapUsd = price > 0
+    ? ` (~$${(token.marketCapSol * price).toLocaleString('en-US', { maximumFractionDigits: 0 })})`
+    : ''
+
   const shortUri = token.uri ? token.uri.slice(0, 30) + '...' : null
   const metaLine = shortUri
     ? `\n📄 <a href="${token.uri}">Metadata</a> <code>${shortUri}</code>\n`
@@ -28,7 +34,7 @@ export async function sendMomentumAlert(watched: WatchedToken, triggerReason: st
     ``,
     `<b>Name:</b> ${token.name}`,
     `<b>Mint:</b> <code>${token.mint}</code>`,
-    `<b>Market Cap:</b> ${token.marketCapSol.toFixed(2)} SOL`,
+    `<b>Market Cap:</b> ${token.marketCapSol.toFixed(2)} SOL${marketCapUsd}`,
     ``,
     `<b>Trigger:</b> ${triggerReason}`,
     `<b>Buys:</b> ${watched.buys}  |  <b>Sells:</b> ${watched.sells}`,

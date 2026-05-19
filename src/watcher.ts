@@ -10,14 +10,24 @@ let ws: WebSocket | null = null
 let reconnectAttempt = 0
 let intentionalClose = false
 
-function buildTriggerReason(entry: { buys: number; sells: number; totalSolVolume: number; addedAt: number }): string {
+function buildTriggerReason(entry: { buys: number; sells: number; totalSolVolume: number; firstBuyAt: number | null }): string {
   const totalTrades = entry.buys + entry.sells
   const buyPressure = totalTrades > 0 ? Math.round((entry.buys / totalTrades) * 100) : 0
-  const elapsed = Math.round((Date.now() - entry.addedAt) / 1000)
-  const mins = Math.floor(elapsed / 60)
-  const secs = elapsed % 60
-  const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
-  return `${entry.buys} buys in ${timeStr} | ${buyPressure}% buy pressure | ${entry.totalSolVolume.toFixed(2)} SOL vol`
+
+  const parts: string[] = []
+
+  if (entry.buys >= 10 && entry.firstBuyAt !== null) {
+    const elapsed = Math.round((Date.now() - entry.firstBuyAt) / 1000)
+    const mins = Math.floor(elapsed / 60)
+    const secs = elapsed % 60
+    const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+    parts.push(`${entry.buys} buys in ${timeStr}`)
+  }
+
+  parts.push(`${buyPressure}% buy pressure`)
+  parts.push(`${entry.totalSolVolume.toFixed(2)} SOL vol`)
+
+  return parts.join(' | ')
 }
 
 function subscribe(socket: WebSocket, method: string, keys?: string[]): void {
