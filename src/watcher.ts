@@ -20,14 +20,10 @@ function buildTriggerReason(entry: { buys: number; sells: number; totalSolVolume
   return `${entry.buys} buys in ${timeStr} | ${buyPressure}% buy pressure | ${entry.totalSolVolume.toFixed(2)} SOL vol`
 }
 
-let heartbeatTimer: ReturnType<typeof setInterval> | null = null
-
 function subscribe(socket: WebSocket, method: string, keys?: string[]): void {
   const payload: Record<string, unknown> = { method }
   if (keys) payload.keys = keys
-  const msg = JSON.stringify(payload)
-  console.log('Sending subscription:', msg)
-  socket.send(msg)
+  socket.send(JSON.stringify(payload))
 }
 
 function connect(): void {
@@ -45,15 +41,9 @@ function connect(): void {
         subscribe(ws!, 'subscribeTokenTrade', [mint])
       }
     }
-
-    if (heartbeatTimer) clearInterval(heartbeatTimer)
-    heartbeatTimer = setInterval(() => {
-      console.log('💓 WS alive, waiting for events...')
-    }, 30_000)
   })
 
   ws.on('message', (data: WebSocket.RawData) => {
-    console.log('RAW:', data.toString().slice(0, 200))
     let parsed: Record<string, unknown>
     try {
       parsed = JSON.parse(data.toString())
@@ -61,27 +51,14 @@ function connect(): void {
       return
     }
 
-    console.log('MSG KEYS:', Object.keys(parsed).join(', '))
-
-    if (parsed.mint && parsed.txType) {
-      // Trade event
-      const trade = parsed as unknown as TradeEvent
-      const triggered = handleTrade(trade)
-      if (triggered) {
-        const reason = buildTriggerReason(triggered)
-        sendMomentumAlert(triggered, reason).catch(() => {})
-        logAlert(triggered.token.name, triggered.token.mint)
-        subscribe(ws!, 'unsubscribeTokenTrade', [trade.mint as string])
-      }
-    } else if (parsed.name && parsed.mint && parsed.symbol) {
-      // New token mint event
+    if (parsed.txType === 'create') {
       const token = parsed as unknown as TokenMintEvent
-      const name = token.name ?? 'Unknown'
-      const descOk = typeof token.description === 'string' && token.description.length > 20
-      const hasSocial = !!(token.twitter || token.telegram)
+      const name = (token.name ?? '').trim()
+      const symbol = (token.symbol ?? '').trim()
 
-      if (!descOk) { logDrop(name, 'description too short'); return }
-      if (!hasSocial) { logDrop(name, 'no Twitter or Telegram'); return }
+      if (!name) { logDrop('(no name)', 'empty name'); return }
+      if (!symbol) { logDrop(name, 'empty symbol'); return }
+      if (!token.initialBuy || token.initialBuy <= 0) { logDrop(name, 'no initial buy'); return }
 
       const added = addToWatchlist(token)
       if (!added) {
@@ -94,13 +71,23 @@ function connect(): void {
       const slot = watchlistSize()
       logPass(name, token.mint, slot)
       subscribe(ws!, 'subscribeTokenTrade', [token.mint])
+
+    } else if (parsed.txType === 'buy' || parsed.txType === 'sell') {
+      const trade = parsed as unknown as TradeEvent
+      const triggered = handleTrade(trade)
+      if (triggered) {
+        const reason = buildTriggerReason(triggered)
+        sendMomentumAlert(triggered, reason).catch(() => {})
+        logAlert(triggered.token.name, triggered.token.mint)
+        subscribe(ws!, 'unsubscribeTokenTrade', [trade.mint])
+      }
+
     } else {
       console.log('UNKNOWN MSG:', JSON.stringify(parsed).slice(0, 150))
     }
   })
 
   ws.on('close', () => {
-    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null }
     if (intentionalClose) return
     scheduleReconnect()
   })

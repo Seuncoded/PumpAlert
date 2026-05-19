@@ -18,23 +18,22 @@ export async function sendMomentumAlert(watched: WatchedToken, triggerReason: st
   const chatId = process.env.TELEGRAM_CHAT_ID!
   const { token } = watched
 
-  const socials: string[] = []
-  if (token.twitter) socials.push(`🐦 <a href="${token.twitter}">Twitter</a>`)
-  if (token.telegram) socials.push(`✈️ <a href="${token.telegram}">Telegram</a>`)
-  if (token.website) socials.push(`🌐 <a href="${token.website}">Website</a>`)
-
-  const socialsLine = socials.length > 0 ? `\n${socials.join('  |  ')}\n` : '\n'
+  const shortUri = token.uri ? token.uri.slice(0, 30) + '...' : null
+  const metaLine = shortUri
+    ? `\n📄 <a href="${token.uri}">Metadata</a> <code>${shortUri}</code>\n`
+    : '\n'
 
   const text = [
     `🔥 <b>Momentum Alert — $${token.symbol}</b>`,
     ``,
     `<b>Name:</b> ${token.name}`,
     `<b>Mint:</b> <code>${token.mint}</code>`,
+    `<b>Market Cap:</b> ${token.marketCapSol.toFixed(2)} SOL`,
     ``,
     `<b>Trigger:</b> ${triggerReason}`,
     `<b>Buys:</b> ${watched.buys}  |  <b>Sells:</b> ${watched.sells}`,
     `<b>Vol:</b> ${watched.totalSolVolume.toFixed(3)} SOL`,
-    socialsLine,
+    metaLine,
     `<a href="https://pump.fun/${token.mint}">🚀 View on pump.fun</a>`,
   ].join('\n')
 

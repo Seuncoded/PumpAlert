@@ -1,26 +1,31 @@
 export interface TokenMintEvent {
+  signature: string
   mint: string
+  traderPublicKey: string
+  txType: string
   name: string
   symbol: string
-  description: string
-  image_uri: string
-  twitter: string | null
-  telegram: string | null
-  website: string | null
-  creator: string
-  market_cap: number
-  virtual_sol_reserves: number
-  virtual_token_reserves: number
-  created_timestamp: number
+  uri: string
+  marketCapSol: number
+  initialBuy: number
+  vTokensInBondingCurve: number
+  vSolInBondingCurve: number
+  pool: string
 }
 
 export interface TradeEvent {
+  signature: string
   mint: string
+  traderPublicKey: string
   txType: 'buy' | 'sell'
   solAmount: number
   tokenAmount: number
-  trader: string
-  timestamp: number
+  bondingCurveKey: string
+  vTokensInBondingCurve: number
+  vSolInBondingCurve: number
+  marketCapSol: number
+  name: string
+  symbol: string
 }
 
 export interface WatchedToken {
