@@ -6,7 +6,7 @@ const BUY_WINDOW_MS = 5 * 60 * 1000
 
 const MIN_BUYS = 10
 const MIN_BUY_PRESSURE = 0.70
-const MIN_BUY_PRESSURE_MIN_TRADES = 5
+const MIN_BUY_PRESSURE_MIN_TRADES = 8
 const MIN_SOL_VOL = 3
 
 const watchlist = new Map<string, WatchedToken>()
@@ -46,8 +46,8 @@ export function handleTrade(trade: TradeEvent): WatchedToken | null {
 
   const triggered =
     (entry.buys >= MIN_BUYS && buyWindowOk) ||
-    (buyPressure >= MIN_BUY_PRESSURE && totalTrades >= MIN_BUY_PRESSURE_MIN_TRADES) ||
-    entry.totalSolVolume >= MIN_SOL_VOL
+    (entry.buys >= 3 && buyPressure >= MIN_BUY_PRESSURE && totalTrades >= MIN_BUY_PRESSURE_MIN_TRADES) ||
+    (entry.buys >= 3 && entry.totalSolVolume >= MIN_SOL_VOL)
 
   if (triggered) {
     entry.alerted = true
